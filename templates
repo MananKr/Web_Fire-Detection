@@ -1,1 +1,557 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🔥 Fire Detection System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    /* Your styles preserved from previous version */
+    body {
+      background: linear-gradient(to bottom right, #ffe6f0, #ffffff);
+      color: #333;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: #ffccd5;
+      color: #800000;
+    }
+
+    header h3 { margin: 0; font-size: 1.2em; }
+
+    .login-btn {
+      background-color: #b30059;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      font-size: 0.9em;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .login-btn:hover, .mode-btn:hover, .button:hover {
+      opacity: 0.85;
+    }
+
+    .mode-btn {
+      background-color: #ff704d;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      font-size: 0.9em;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      padding: 20px;
+    }
+
+    .left-panel {
+      width: 25%;
+      padding: 10px;
+      text-align: center;
+      border-right: 2px solid #ffb6c1;
+    }
+
+    .left-panel img {
+      width: 90%;
+      border-radius: 10px;
+      border: 2px solid #d77a9c;
+    }
+
+    .right-panel {
+      width: 75%;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .alert {
+      margin: 10px auto;
+      padding: 15px;
+      font-size: 1.2em;
+      font-weight: bold;
+      background-color: #fff0f5;
+      border: 2px solid #d77a9c;
+      border-radius: 8px;
+      width: 300px;
+      color: #800000;
+    }
+
+    .button {
+      padding: 10px 20px;
+      font-size: 1em;
+      margin: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      color: white;
+      transition: background 0.3s;
+    }
+
+    .start-btn { background-color: #28a745; }
+    .stop-btn { background-color: #dc3545; }
+    .reset-btn { background-color: #17a2b8; }
+    .exit-btn { background-color: #6c757d; }
+
+    img.stream {
+      border: 3px solid #d77a9c;
+      margin-top: 10px;
+      width: 480px;
+      height: auto;
+    }
+
+    .bottom-image {
+      padding: 20px;
+      text-align: center;
+    }
+
+    .bottom-image img {
+      border: 2px solid #d77a9c;
+      max-height: 200px;
+      border-radius: 5px;
+      width: 80%;
+    }
+
+    a {
+      color: #b30059;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h3>🔥 Fire Web-Detection System</h3>
+    <div>
+      <button class="login-btn" onclick="loginPrompt()">Login</button>
+      <button class="mode-btn" id="modeBtn" onclick="toggleMode()">Mode: {{ mode }}</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Left Panel: Developer Info -->
+    <div class="left-panel">
+      <img src="{{ url_for('static', filename='developer.jpg') }}" alt="Developer Photo">
+      <h3>Developer: Manan Kumar</h3>
+      <p>📞 8649965881</p>
+      <p>📧 manankmr.ai@gmail.com</p>
+      <p>💻 <a href="https://github.com/MananKr" target="_blank">github.com/MananKr</a></p>
+    
+      <!-- Dynamic Fire/System Image -->
+      <div class="bottom-image">
+        <h4>Status Image</h4>
+        <img id="statusImage" src="{{ url_for('static', filename='system_healthy.png') }}" alt="Status Image">
+      </div>
+    </div>
+
+    <!-- Right Panel: Live Video and Buttons -->
+    <div class="right-panel">
+      <div class="alert" id="alertBox">{{ alert_message }}</div>
+
+      <div>
+        <form action="/start" method="post" style="display:inline;">
+          <button class="button start-btn">▶️ Start</button>
+        </form>
+        <form action="/stop" method="post" style="display:inline;">
+          <button class="button stop-btn">⏹ Stop</button>
+        </form>
+        <form action="/reset_fire" method="post" style="display:inline;">
+          <button class="button reset-btn">🔄 Reset</button>
+        </form>
+        <form action="/exit" method="post" style="display:inline;">
+          <button class="button exit-btn">❌ Exit</button>
+        </form>
+      </div>
+
+      <h3>Live Web-Fire Detection</h3>
+      <img src="{{ url_for('video_feed') }}" id="videoFeed" class="stream" alt="Camera Feed">
+    </div>
+  </div>
+
+  <script>
+    function loginPrompt() {
+      const ip = prompt("🔧 Enter FAS IP (e.g., 192.168.0.123):");
+      if (ip) {
+        fetch("/update_ip",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ip: ip })
+        }
+      )
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "success") {
+            alert("✅ IP set to: " + data.url);
+          } else {
+            alert("❌ Error: " + data.message);
+          }
+        })
+        .catch(error => {
+          alert("⚠️ Failed to send IP: " + error);
+        });
+      } else {
+        alert("⚠️ No IP entered.");
+      }
+    }
+
+    let currentMode = "{{ mode }}";
+    function toggleMode() {
+      currentMode = currentMode === "AUTO" ? "CNN" : "AUTO";
+      document.getElementById("modeBtn").innerText = "Mode: " + currentMode;
+
+      // Send the selected mode to backend
+      fetch('/set_mode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ mode: currentMode })
+      })
+      .then(response => response.json())
+      .then(data => console.log("Mode set to:", data.mode))
+      .catch(error => console.error("Error:", error));
+    }
+
+    const alertBox = document.getElementById("alertBox");
+    const statusImage = document.getElementById("statusImage");
+
+    // Update alert message and image every 2s
+setInterval(() => {
+  fetch("/get_alert")
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("alertBox").innerText = data.alert;
+
+      if (data.alert.includes("Fire Detected")) {
+        document.getElementById("statusImage").src = "{{ url_for('static', filename='last_fire.jpg') }}" + "?t=" + new Date().getTime();
+      } else {
+        document.getElementById("statusImage").src = "{{ url_for('static', filename='system_healthy.png') }}";
+      }
+    });
+}, 2000);
+
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🔥 Fire Detection System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      background: linear-gradient(to bottom right, #ffe6f0, #ffffff);
+      color: #333;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: #ffccd5;
+      color: #800000;
+    }
+
+    header h3 {
+      margin: 0;
+      font-size: 1.2em;
+    }
+
+    .login-btn {
+      background-color: #b30059;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      font-size: 0.9em;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .login-btn:hover {
+      opacity: 0.85;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      padding: 20px;
+    }
+
+    .left-panel {
+      width: 25%;
+      padding: 10px;
+      text-align: center;
+      border-right: 2px solid #ffb6c1;
+    }
+
+    .left-panel img {
+      width: 90%;
+      border-radius: 10px;
+      border: 2px solid #d77a9c;
+    }
+
+    .right-panel {
+      width: 75%;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .alert {
+      margin: 10px auto;
+      padding: 15px;
+      font-size: 1.2em;
+      font-weight: bold;
+      background-color: #fff0f5;
+      border: 2px solid #d77a9c;
+      border-radius: 8px;
+      width: 300px;
+      color: #800000;
+    }
+
+    .button {
+      padding: 10px 20px;
+      font-size: 1em;
+      margin: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      color: white;
+      transition: background 0.3s;
+    }
+
+    .start-btn { background-color: #28a745; }
+    .stop-btn { background-color: #dc3545; }
+    .reset-btn { background-color: #17a2b8; }
+    .exit-btn { background-color: #6c757d; }
+    .button:hover { opacity: 0.85; }
+
+    img.stream {
+      border: 3px solid #d77a9c;
+      margin-top: 10px;
+      width: 480px;
+      height: auto;
+    }
+
+    .bottom-image {
+      padding: 20px;
+      text-align: center;
+    }
+
+    .bottom-image img {
+      border: 2px solid #d77a9c;
+      max-height: 200px;
+      border-radius: 5px;
+      width: 80%;
+    }
+
+    a {
+      color: #b30059;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h3>🔥 Fire Web-Detection System</h3>
+    <button class="login-btn" onclick="loginPrompt()">Enter UNO IP</button>
+  </header>
+
+  <div class="container">
+    <! Developer Info Panel -->
+    <!-- <div class="left-panel">
+      <img src="{{ url_for('static', filename='developer.jpg') }}" alt="Developer Photo">
+      <h3>Developer: Manan Kumar</h3>
+      <p>📞 8649965881</p>
+      <p>📧 manankmr.ai@gmail.com</p>
+      <p>💻 <a href="https://github.com/MananKr" target="_blank">github.com/MananKr</a></p>
+
+      Dynamic Fire/System Image -->
+      <!-- <div class="bottom-image">
+        <h4>Status Image</h4>
+        <img id="statusImage" src="{{ url_for('static', filename='system_healthy.png') }}" alt="Status Image">
+      </div> -->
+    <!-- </div> --> 
+
+    <!-- Live Video & Controls -->
+    <!-- <div class="right-panel">
+      <div class="alert" id="alertBox">{{ alert_message }}</div>
+
+      <div>
+        <form action="/start" method="post" style="display:inline;">
+          <button class="button start-btn">▶️ Start</button>
+        </form>
+        <form action="/stop" method="post" style="display:inline;">
+          <button class="button stop-btn">⏹ Stop</button>
+        </form>
+        <form action="/reset_fire" method="post" style="display:inline;">
+          <button class="button reset-btn">🔄 Reset</button>
+        </form>
+        <form action="/exit" method="post" style="display:inline;">
+          <button class="button exit-btn">❌ Exit</button>
+        </form>
+      </div>
+
+      <h3>Live Web-Fire Detection</h3>
+      <img src="{{ url_for('video_feed') }}" id="videoFeed" class="stream" alt="Camera Feed">
+    </div> -->
+  <!-- </div> -->
+
+  <!-- JavaScript Section -->
+  <!-- <script>
+    function loginPrompt() {
+      const ip = prompt("🔧 Enter UNO IP (e.g., 192.168.0.123):");
+
+      if (ip) {
+        fetch("/update_ip", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ ip: ip })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "success") {
+            alert("✅ IP set to: " + data.url);
+          } else {
+            alert("❌ Error: " + data.message);
+          }
+        })
+        .catch(error => {
+          alert("⚠️ Failed to send IP: " + error);
+        });
+      } else {
+        alert("⚠️ No IP entered.");
+      }
+    }
+
+    const alertBox = document.getElementById("alertBox");
+    const statusImage = document.getElementById("statusImage");
+
+    setInterval(() => {
+      fetch("/get_alert")
+        .then(res => res.json())
+        .then(data => {
+          alertBox.innerText = data.alert;
+
+          if (
+            data.alert.toLowerCase().includes("fire") ||
+            data.alert.toLowerCase().includes("flame") ||
+            data.alert.toLowerCase().includes("smoke")
+          ) {
+            statusImage.src = "{{ url_for('static', filename='last_fire.jpg') }}" + "?t=" + new Date().getTime();
+          } else {
+            statusImage.src = "{{ url_for('static', filename='system_healthy.png') }}";
+          }
+        })
+        .catch(error => {
+          console.error("❌ Error fetching alert:", error);
+        });
+    }, 2000);
+  </script> -->
+
+<!-- </body> -->
+<!--/html> -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🔥 Fire Detection System</title>
+  <style>
+    body { font-family: sans-serif; background: #fff0f0; text-align: center; }
+    .alert { padding: 20px; font-size: 1.5em; margin: 20px; border: 2px solid #ff6666; }
+    button { padding: 10px 20px; margin: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🔥 Fire Web-Detection System</h1>
+  <div class="alert" id="alertBox">{{ alert_message }}</div>
+  <div class="alert" id="ipBox">UNO IP: Loading...</div>
+
+  <form action="/start" method="post"><button>▶️ Start</button></form>
+  <form action="/stop" method="post"><button>⏹ Stop</button></form>
+  <form action="/exit" method="post"><button>❌ Exit</button></form>
+
+  <h3>Live Feed:</h3>
+  <img src="{{ url_for('video_feed') }}" style="width:640px;border:3px solid red;">
+
+  <script>
+    const alertBox = document.getElementById("alertBox");
+    const ipBox = document.getElementById("ipBox");
+
+    setInterval(() => {
+      fetch("/get_alert")
+        .then(res => res.json())
+        .then(data => alertBox.innerText = data.alert);
+
+      fetch("/get_ip")
+        .then(res => res.text())
+        .then(data => ipBox.innerText = "UNO IP: " + data);
+    }, 3000);
+  </script>
+</body>
+</html> -->
